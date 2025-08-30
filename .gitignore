@@ -185,7 +185,7 @@ logs/
 *.log.*
 
 # Model files and cache (these are large and should be mounted via volume)
-models/
+# models/
 *.bin
 *.safetensors
 *.gguf
