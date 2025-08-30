@@ -1,0 +1,35 @@
+# FastAPI framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# Core inference engines
+# Note: torch/CUDA pre-installed in NVIDIA container (PyTorch 2.5.0, CUDA 12.6)
+vllm>=0.10.0
+transformers>=4.48.0
+sentence-transformers>=3.3.0
+accelerate>=1.2.0
+
+# Data validation and API compatibility
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+openai>=1.50.0  # For API compatibility testing
+
+# Essential utilities
+python-dotenv>=1.0.0
+loguru>=0.7.0
+
+# Optional: performance optimization (may require compilation)
+# flash-attn>=2.7.0  # Uncomment if GPU supports flash attention
+
+# Auto-installed dependencies (removed for cleaner requirements):
+# - numpy, scipy (via transformers, vllm)
+# - ray (via vllm) 
+# - httpx (via openai, vllm)
+# - accelerate (via transformers)
+# - safetensors (via transformers)
+# - sentencepiece (via transformers)
+# - protobuf (via transformers)
+# - datasets (via transformers)
+# - einops (via models)
+# - aiofiles (via fastapi)
+# - python-multipart (via fastapi)

@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  local-llm-interface:
+    build: .
+    container_name: local-llm-api
+    ports:
+      - "15530:15530"
+    volumes:
+      # Mount source code for development
+      - .:/app
+      # Mount local models directory
+      - /mnt/workspace/Source/LLM:/models:ro
+      # Optional: mount logs directory
+      - ./logs:/app/logs
+    environment:
+      # Model configuration
+      - LLM_MODELS_DIR=/models
+      - LLM_HOST=0.0.0.0
+      - LLM_PORT=15530
+      
+      # GPU configuration
+      - LLM_GPU_MEMORY_UTILIZATION=0.8
+      - LLM_CUDA_VISIBLE_DEVICES=0
+      
+      # vLLM configuration
+      - LLM_VLLM_TENSOR_PARALLEL_SIZE=1
+      - LLM_VLLM_DTYPE=auto
+      - LLM_VLLM_MAX_MODEL_LEN=16384
+      
+      # Transformers configuration
+      - LLM_TRANSFORMERS_DEVICE=cuda
+      - LLM_TRANSFORMERS_TORCH_DTYPE=auto
+      
+      # API configuration
+      - LLM_CORS_ORIGINS=["*"]
+      - LLM_LOG_LEVEL=INFO
+      
+      # Model management
+      - LLM_AUTO_UNLOAD_MODELS=true
+      - LLM_MODEL_CACHE_SIZE=1
+      
+      # Hybrid GPU+Memory deployment
+      - LLM_ENABLE_GPU_MEMORY_OFFLOAD=true
+      - LLM_GPU_MEMORY_OFFLOAD_THRESHOLD_GB=4.0
+      - LLM_AVAILABLE_GPU_MEMORY_GB=8.0
+    
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    restart: unless-stopped
+    
+    # Optional: logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
