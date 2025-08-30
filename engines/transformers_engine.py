@@ -244,8 +244,12 @@ class TransformersEngine(InferenceEngine):
             
             if isinstance(self.model, CrossEncoder):
                 # Use CrossEncoder for direct scoring
-                pairs = [(query, doc) for doc in documents]
-                scores = self.model.predict(pairs)
+                # Process documents one by one to avoid padding token issues
+                scores = []
+                for doc in documents:
+                    pair = [(query, doc)]
+                    score = self.model.predict(pair)[0]
+                    scores.append(score)
                 
             else:
                 # Use SentenceTransformer for similarity-based reranking

@@ -95,9 +95,36 @@ class ModelManager:
             # Need to switch models
             logger.info(f"Switching from '{current_model}' to '{model_name}'")
             
-            # Unload current model if auto_unload is enabled
-            if current_model and settings.auto_unload_models:
-                await self._unload_model(current_model)
+            # Determine if we need to unload all models for memory
+            deployment_strategy = self._determine_deployment_strategy(model_info)
+            needs_full_memory = model_info.size_gb > settings.gpu_memory_offload_threshold_gb
+            
+            if settings.auto_unload_models:
+                if needs_full_memory:
+                    # Large model needs all available memory - unload ALL loaded models
+                    logger.info(f"Large model '{model_name}' requires full memory, unloading all models...")
+                    loaded_models = [name for name, engine in self.engines.items() 
+                                   if engine.is_loaded]
+                    for loaded_model in loaded_models:
+                        await self._unload_model(loaded_model)
+                        # Also clear from current_models
+                        for mtype, mname in list(self.current_models.items()):
+                            if mname == loaded_model:
+                                del self.current_models[mtype]
+                else:
+                    # Small model - check if we need to unload other models for memory
+                    # Get all currently loaded models regardless of type
+                    loaded_models = [name for name, engine in self.engines.items() 
+                                   if engine.is_loaded and name != model_name]
+                    
+                    if loaded_models:
+                        logger.info(f"Unloading {len(loaded_models)} models to make room for '{model_name}'...")
+                        for loaded_model in loaded_models:
+                            await self._unload_model(loaded_model)
+                            # Also clear from current_models
+                            for mtype, mname in list(self.current_models.items()):
+                                if mname == loaded_model:
+                                    del self.current_models[mtype]
             
             # Load new model
             await self._load_model(model_info)
