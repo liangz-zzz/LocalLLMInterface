@@ -44,6 +44,11 @@ services:
       - LLM_ENABLE_GPU_MEMORY_OFFLOAD=true
       - LLM_GPU_MEMORY_OFFLOAD_THRESHOLD_GB=4.0
       - LLM_AVAILABLE_GPU_MEMORY_GB=8.0
+      
+      # Vision model configuration
+      - LLM_VISION_BATCH_SIZE=32
+      - LLM_VISION_MAX_IMAGE_SIZE=1024
+      - LLM_ENABLE_VISION_MODELS=true
     
     deploy:
       resources:

@@ -11,6 +11,8 @@ class ModelType(str, Enum):
     CHAT = "chat"
     EMBEDDING = "embedding"
     RERANKER = "reranker"
+    VISION = "vision"           # Pure vision models (e.g., DINOv3)
+    MULTIMODAL = "multimodal"   # Vision-language models (e.g., CLIP)
     UNKNOWN = "unknown"
 
 
@@ -18,6 +20,7 @@ class EngineType(str, Enum):
     """Inference engine type"""
     VLLM = "vllm"
     TRANSFORMERS = "transformers"
+    VISION = "vision"  # Vision model engine
 
 
 class ModelStatus(str, Enum):
@@ -138,3 +141,53 @@ class RerankResponse(BaseModel):
     """Reranking response"""
     model: str
     results: List[RerankResult]
+
+
+# Vision API Models
+class ImageInput(BaseModel):
+    """Image input format"""
+    data: Optional[str] = Field(default=None, description="Base64 encoded image data")
+    url: Optional[str] = Field(default=None, description="Image URL")
+    path: Optional[str] = Field(default=None, description="Local file path")
+
+
+class VisionEncodeRequest(BaseModel):
+    """Vision encoding request"""
+    model: str = Field(description="Model name to use")
+    images: List[str] = Field(description="List of images (base64/URL/path)")
+
+
+class VisionEncodeResponse(BaseModel):
+    """Vision encoding response"""
+    model: str
+    embeddings: List[List[float]]
+    dimensions: int
+
+
+class MultimodalEncodeRequest(BaseModel):
+    """Multimodal encoding request"""
+    model: str = Field(description="Model name to use")
+    images: Optional[List[str]] = Field(default=None, description="List of images")
+    texts: Optional[List[str]] = Field(default=None, description="List of texts")
+
+
+class MultimodalEncodeResponse(BaseModel):
+    """Multimodal encoding response"""
+    model: str
+    image_embeddings: Optional[List[List[float]]] = None
+    text_embeddings: Optional[List[List[float]]] = None
+    dimensions: int
+
+
+class MultimodalMatchRequest(BaseModel):
+    """Image-text matching request"""
+    model: str = Field(description="Model name to use")
+    images: List[str] = Field(description="List of images")
+    texts: List[str] = Field(description="List of texts")
+
+
+class MultimodalMatchResponse(BaseModel):
+    """Image-text matching response"""
+    model: str
+    similarity_matrix: List[List[float]]
+    shape: List[int]

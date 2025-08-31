@@ -88,7 +88,13 @@ class ModelDiscovery:
         """Determine model type from name and config"""
         model_id_lower = model_id.lower()
         
-        # Check directory name patterns
+        # Check for vision models first
+        if 'clip' in model_id_lower:
+            return ModelType.MULTIMODAL
+        elif any(keyword in model_id_lower for keyword in ['dino', 'dinov3', 'vit', 'vision']):
+            return ModelType.VISION
+        
+        # Check directory name patterns for text models
         if any(keyword in model_id_lower for keyword in ['instruct', 'chat', 'conversation']):
             return ModelType.CHAT
         elif 'embedding' in model_id_lower:
@@ -102,12 +108,23 @@ class ModelDiscovery:
             architectures = config.get("architectures", [])
             if architectures:
                 arch_str = " ".join(architectures).lower()
-                if any(keyword in arch_str for keyword in ['causal', 'gpt', 'llama', 'qwen']):
+                if 'clip' in arch_str:
+                    return ModelType.MULTIMODAL
+                elif any(keyword in arch_str for keyword in ['vit', 'dinov3', 'vision']):
+                    return ModelType.VISION
+                elif any(keyword in arch_str for keyword in ['causal', 'gpt', 'llama', 'qwen']):
                     return ModelType.CHAT
                 elif 'bert' in arch_str and 'embedding' in model_id_lower:
                     return ModelType.EMBEDDING
                 elif 'cross' in arch_str or 'rerank' in arch_str:
                     return ModelType.RERANKER
+            
+            # Check model_type field
+            model_type = config.get("model_type", "").lower()
+            if 'clip' in model_type:
+                return ModelType.MULTIMODAL
+            elif any(keyword in model_type for keyword in ['vit', 'dinov3', 'vision']):
+                return ModelType.VISION
             
             # Check task-specific fields
             if config.get("task_type") == "feature-extraction":
@@ -127,6 +144,10 @@ class ModelDiscovery:
         # vLLM is optimal for chat models
         if model_type == ModelType.CHAT:
             return EngineType.VLLM
+        
+        # Vision engine for vision and multimodal models
+        if model_type in [ModelType.VISION, ModelType.MULTIMODAL]:
+            return EngineType.VISION
         
         # Transformers for embedding and reranker models
         # vLLM doesn't support these model types well

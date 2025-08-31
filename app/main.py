@@ -8,7 +8,7 @@ from loguru import logger
 import sys
 
 from app.config import settings
-from app.api import models, chat, embeddings, rerank
+from app.api import models, chat, embeddings, rerank, vision, multimodal
 from models.manager import model_manager
 
 
@@ -96,6 +96,8 @@ app.include_router(models.router)
 app.include_router(chat.router)
 app.include_router(embeddings.router)
 app.include_router(rerank.router)
+app.include_router(vision.router)
+app.include_router(multimodal.router)
 
 
 @app.get("/")

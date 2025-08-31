@@ -16,11 +16,14 @@ class ModelManager:
     
     def __init__(self):
         self.discovery = ModelDiscovery(settings.models_dir)
+        self.model_discovery = self.discovery  # Alias for API compatibility
         self.engines: Dict[str, InferenceEngine] = {}
         self.current_models: Dict[ModelType, Optional[str]] = {
             ModelType.CHAT: None,
             ModelType.EMBEDDING: None,
-            ModelType.RERANKER: None
+            ModelType.RERANKER: None,
+            ModelType.VISION: None,
+            ModelType.MULTIMODAL: None
         }
         self._lock = asyncio.Lock()
         self._available_models: Dict[str, ModelInfo] = {}
@@ -210,6 +213,11 @@ class ModelManager:
         elif model_info.engine == EngineType.TRANSFORMERS:
             from engines.transformers_engine import TransformersEngine
             return TransformersEngine(model_info, device=strategy["device"])
+        elif model_info.engine == EngineType.VISION:
+            from engines.vision_engine import VisionEngine
+            # Vision models use GPU if available
+            use_gpu = strategy["device"] == "cuda"
+            return VisionEngine(model_info, use_gpu=use_gpu)
         else:
             raise ValueError(f"Unknown engine type: {model_info.engine}")
     

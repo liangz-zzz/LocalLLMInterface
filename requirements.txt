@@ -18,6 +18,9 @@ openai>=1.50.0  # For API compatibility testing
 python-dotenv>=1.0.0
 loguru>=0.7.0
 
+# NumPy compatibility fix
+pyarrow>=17.0.0  # Ensures compatibility with NumPy 2.x
+
 # Optional: performance optimization (may require compilation)
 # flash-attn>=2.7.0  # Uncomment if GPU supports flash attention
 
