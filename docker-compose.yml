@@ -49,6 +49,11 @@ services:
       - LLM_VISION_BATCH_SIZE=32
       - LLM_VISION_MAX_IMAGE_SIZE=1024
       - LLM_ENABLE_VISION_MODELS=true
+      
+      # Multiprocessing configuration for CUDA compatibility
+      - VLLM_WORKER_MULTIPROC_METHOD=spawn
+      - CUDA_LAUNCH_BLOCKING=1
+      - PYTHONPATH=/app
     
     deploy:
       resources:

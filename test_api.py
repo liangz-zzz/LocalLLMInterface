@@ -318,10 +318,6 @@ async def main():
         # Get available models
         models = await test_list_models()
         
-        # Test each endpoint type
-        await test_chat_completion(models)
-        await test_embeddings(models)
-        await test_rerank(models)
         # Get vision models response for testing
         async with httpx.AsyncClient() as client:
             vision_response = await client.get(f"{BASE_URL}/v1/vision/models")
@@ -332,6 +328,11 @@ async def main():
         await test_multimodal_features(vision_models.get('data', []))
         await test_similarity_with_features()
         
+        # Test each endpoint type
+        await test_embeddings(models)
+        await test_rerank(models)
+        await test_chat_completion(models)
+        await test_chat_completion(models)
         print("\n✅ All tests completed!")
         
     except Exception as e:

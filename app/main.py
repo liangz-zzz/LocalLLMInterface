@@ -1,11 +1,21 @@
 """FastAPI application entry point"""
 
 import asyncio
+import multiprocessing
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 import sys
+
+# Set multiprocessing start method to 'spawn' for CUDA compatibility
+# Must be set before importing any CUDA-related modules
+try:
+    multiprocessing.set_start_method('spawn', force=True)
+    logger.info("Set multiprocessing start method to 'spawn' for CUDA compatibility")
+except RuntimeError:
+    # Already set
+    pass
 
 from app.config import settings
 from app.api import models, chat, embeddings, rerank, vision, multimodal

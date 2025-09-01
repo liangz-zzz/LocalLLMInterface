@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "grep"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

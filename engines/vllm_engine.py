@@ -4,8 +4,12 @@ import asyncio
 import uuid
 import time
 import json
+import multiprocessing
 from typing import List, AsyncIterator, Dict, Any, Optional
 from loguru import logger
+
+# Set multiprocessing start method to 'spawn' for CUDA compatibility
+multiprocessing.set_start_method('spawn', force=True)
 
 from vllm import LLM, SamplingParams
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -38,7 +42,7 @@ class VLLMEngine(InferenceEngine):
         try:
             logger.info(f"Loading vLLM model from {self.model_info.path}")
             
-            # Configure engine arguments
+            # Configure engine arguments  
             engine_args = AsyncEngineArgs(
                 model=self.model_info.path,
                 tensor_parallel_size=settings.vllm_tensor_parallel_size,
