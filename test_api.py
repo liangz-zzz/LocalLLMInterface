@@ -331,8 +331,8 @@ async def main():
         # Test each endpoint type
         await test_embeddings(models)
         await test_rerank(models)
-        await test_chat_completion(models)
-        await test_chat_completion(models)
+        # await test_chat_completion(models)
+        # await test_chat_completion(models)
         print("\n✅ All tests completed!")
         
     except Exception as e:

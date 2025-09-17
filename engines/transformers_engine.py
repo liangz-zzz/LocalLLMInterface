@@ -4,7 +4,7 @@ import uuid
 import time
 import torch
 import numpy as np
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 from loguru import logger
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from transformers import AutoModel, AutoTokenizer, AutoConfig
@@ -154,22 +154,29 @@ class TransformersEngine(InferenceEngine):
             raise ValueError(f"Model '{self.model_info.id}' is not an embedding model")
         
         try:
-            texts = request.input
+            texts = list(request.input)
             logger.debug(f"Generating embeddings for {len(texts)} texts")
-            
+
+            prepared_texts, encode_kwargs = self._prepare_embedding_inputs(
+                texts,
+                request.prompt,
+                request.prompt_name
+            )
+
             # Generate embeddings
             if isinstance(self.model, SentenceTransformer):
                 # Use sentence-transformers
                 embeddings = self.model.encode(
-                    texts,
+                    prepared_texts,
                     convert_to_numpy=True,
                     normalize_embeddings=True,
-                    batch_size=32
+                    batch_size=32,
+                    **encode_kwargs
                 )
             else:
                 # Use raw transformers
-                embeddings = await self._generate_raw_embeddings(texts)
-            
+                embeddings = await self._generate_raw_embeddings(prepared_texts)
+
             # Convert to list format
             embedding_data = []
             for i, embedding in enumerate(embeddings):
@@ -179,7 +186,7 @@ class TransformersEngine(InferenceEngine):
                 ))
             
             # Calculate approximate token usage
-            total_tokens = sum(len(text.split()) for text in texts)  # Rough approximation
+            total_tokens = sum(len(text.split()) for text in prepared_texts)  # Rough approximation
             
             return EmbeddingResponse(
                 data=embedding_data,
@@ -194,7 +201,7 @@ class TransformersEngine(InferenceEngine):
         except Exception as e:
             logger.error(f"Error generating embeddings: {e}")
             raise
-    
+
     async def _generate_raw_embeddings(self, texts: List[str]) -> np.ndarray:
         """Generate embeddings using raw transformers model"""
         embeddings = []
@@ -224,6 +231,43 @@ class TransformersEngine(InferenceEngine):
                 embeddings.append(embedding.cpu().numpy()[0])
         
         return np.array(embeddings)
+
+    def _prepare_embedding_inputs(
+        self,
+        texts: List[str],
+        prompt: Optional[Union[str, List[str]]],
+        prompt_name: Optional[str]
+    ) -> Tuple[List[str], dict]:
+        """Apply instruction-style prompts based on model capabilities"""
+        if isinstance(self.model, SentenceTransformer):
+            encode_kwargs = {}
+            if prompt is not None:
+                encode_kwargs["prompt"] = prompt
+            if prompt_name is not None:
+                encode_kwargs["prompt_name"] = prompt_name
+            return texts, encode_kwargs
+
+        if prompt is None:
+            return texts, {}
+
+        prompts: List[str]
+        if isinstance(prompt, str):
+            prompts = [prompt] * len(texts)
+        else:
+            prompts = list(prompt)
+
+        paired = min(len(prompts), len(texts))
+        if paired == 0:
+            return texts, {}
+
+        prepared = []
+        for idx in range(paired):
+            prepared.append(f"Instruct: {prompts[idx]}\nQuery: {texts[idx]}")
+
+        if len(texts) > paired:
+            prepared.extend(texts[paired:])
+
+        return prepared, {}
     
     async def rerank_documents(
         self,

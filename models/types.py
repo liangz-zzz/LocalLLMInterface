@@ -1,7 +1,7 @@
 """Model type definitions"""
 
 from enum import Enum
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -105,6 +105,14 @@ class EmbeddingRequest(BaseModel):
     model: str = Field(description="Model name to use")
     input: List[str] = Field(description="Input texts to embed")
     encoding_format: str = Field(default="float", description="Encoding format")
+    prompt: Optional[Union[str, List[str]]] = Field(
+        default=None,
+        description="Optional prompt or prompts to prepend when supported"
+    )
+    prompt_name: Optional[str] = Field(
+        default=None,
+        description="Named prompt to use when supported by the model"
+    )
 
 
 class EmbeddingData(BaseModel):
