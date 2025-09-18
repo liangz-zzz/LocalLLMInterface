@@ -186,6 +186,85 @@ async def test_embeddings_with_prompt(models: list):
             print("⚠️  Alignment check did not pass; please review model outputs.")
 
 
+async def test_embeddings_prompt_consistency_check(models: list):
+    """Compare consistent vs mismatched prompt usage on embedding alignment"""
+    print("\n🧪 Comparing prompt consistency impact on embeddings...")
+
+    embedding_models = [m for m in models if m["type"] == "embedding"]
+    if not embedding_models:
+        print("No embedding models found, skipping prompt consistency test")
+        return
+
+    model_name = embedding_models[0]["id"]
+    print(f"Using model: {model_name}")
+
+    prompt_text = "Given a web search query, retrieve relevant passages that answer the query"
+    queries = [
+        "What is the capital of China?",
+        "Explain gravity",
+    ]
+    documents = [
+        "The capital of China is Beijing.",
+        "Gravity is a force that attracts two bodies towards each other. It gives weight to physical objects and is responsible for the movement of planets around the sun.",
+    ]
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        consistent_payload = {
+            "model": model_name,
+            "input": queries + documents,
+            "prompt": prompt_text,
+        }
+        consistent_resp = await client.post(f"{BASE_URL}/v1/embeddings", json=consistent_payload)
+        print(f"Consistent embeddings status: {consistent_resp.status_code}")
+        if consistent_resp.status_code != 200:
+            print(f"Error (consistent): {consistent_resp.text}")
+            return
+
+        mismatch_queries_payload = {
+            "model": model_name,
+            "input": queries,
+            "prompt": prompt_text,
+        }
+        mismatch_docs_payload = {
+            "model": model_name,
+            "input": documents,
+        }
+
+        mismatch_q_resp = await client.post(f"{BASE_URL}/v1/embeddings", json=mismatch_queries_payload)
+        mismatch_d_resp = await client.post(f"{BASE_URL}/v1/embeddings", json=mismatch_docs_payload)
+        print(f"Mismatch query status: {mismatch_q_resp.status_code}, document status: {mismatch_d_resp.status_code}")
+        if mismatch_q_resp.status_code != 200 or mismatch_d_resp.status_code != 200:
+            print(f"Error (mismatch): queries={mismatch_q_resp.text}, documents={mismatch_d_resp.text}")
+            return
+
+        consistent_vecs = np.array([item["embedding"] for item in consistent_resp.json()["data"]], dtype=np.float32)
+        consistent_queries = consistent_vecs[:len(queries)]
+        consistent_docs = consistent_vecs[len(queries):]
+
+        mismatch_queries = np.array([item["embedding"] for item in mismatch_q_resp.json()["data"]], dtype=np.float32)
+        mismatch_docs = np.array([item["embedding"] for item in mismatch_d_resp.json()["data"]], dtype=np.float32)
+
+        consistent_sim = consistent_queries @ consistent_docs.T
+        mismatch_sim = mismatch_queries @ mismatch_docs.T
+
+        with np.printoptions(precision=4, suppress=True):
+            print("Consistent similarity matrix:\n", consistent_sim)
+            print("Mismatch similarity matrix:\n", mismatch_sim)
+
+        consistent_diag = np.diag(consistent_sim)
+        mismatch_diag = np.diag(mismatch_sim)
+        diag_delta = consistent_diag - mismatch_diag
+
+        print(f"Consistent diagonal scores: {consistent_diag}")
+        print(f"Mismatch diagonal scores: {mismatch_diag}")
+        print(f"Δ (consistent - mismatch): {diag_delta}")
+
+        if np.all(consistent_diag >= mismatch_diag - 1e-4):
+            print("✅ Consistent prompts performed the same or better on diagonal alignment.")
+        else:
+            print("⚠️  Mismatch prompts unexpectedly outperformed—review your prompt strategy.")
+
+
 async def test_rerank(models: list):
     """Test rerank endpoint"""
     print("\n🔄 Testing rerank...")
@@ -407,6 +486,7 @@ async def main():
         # Test each endpoint type
         await test_embeddings(models)
         await test_embeddings_with_prompt(models)
+        await test_embeddings_prompt_consistency_check(models)
         await test_rerank(models)
         # await test_chat_completion(models)
         # await test_chat_completion(models)
