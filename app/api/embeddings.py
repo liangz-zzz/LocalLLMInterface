@@ -1,6 +1,18 @@
-"""Embeddings API - OpenAI compatible"""
+"""Embeddings API - OpenAI compatible
 
-from fastapi import APIRouter, HTTPException
+This endpoint supports optional prompt controls for embedding models:
+- `prompt_name`: Use a named, model-provided template (e.g., "query").
+- `prompt`: Provide a custom instruction string (or list of strings),
+  which is passed through to SentenceTransformers or emulated when
+  using raw Transformers fallback.
+
+Examples:
+- Named prompt: {"model": "Qwen3-Embedding-0.6B", "input": ["..."], "prompt_name": "query"}
+- Custom prompt: {"model": "Qwen3-Embedding-0.6B", "input": ["..."],
+                 "prompt": "Given a web search query, retrieve relevant passages that answer the query"}
+"""
+
+from fastapi import APIRouter, HTTPException, Body
 from loguru import logger
 
 from models.manager import model_manager
@@ -15,7 +27,56 @@ router = APIRouter(prefix="/v1", tags=["embeddings"])
 
 
 @router.post("/embeddings", response_model=EmbeddingResponse)
-async def create_embeddings(request: EmbeddingRequest):
+async def create_embeddings(
+    request: EmbeddingRequest = Body(
+        ...,
+        examples={
+            "basic": {
+                "summary": "Basic embedding",
+                "value": {
+                    "model": "Qwen3-Embedding-0.6B",
+                    "input": ["测试文本"]
+                },
+            },
+            "with_prompt_name": {
+                "summary": "Use named prompt (query)",
+                "value": {
+                    "model": "Qwen3-Embedding-0.6B",
+                    "input": [
+                        "What is the capital of China?",
+                        "Explain gravity"
+                    ],
+                    "prompt_name": "query"
+                },
+            },
+            "with_custom_prompt": {
+                "summary": "Use custom prompt string",
+                "value": {
+                    "model": "Qwen3-Embedding-0.6B",
+                    "input": [
+                        "What is the capital of China?",
+                        "Explain gravity"
+                    ],
+                    "prompt": "Given a web search query, retrieve relevant passages that answer the query"
+                },
+            },
+            "per_input_prompts": {
+                "summary": "Per-input custom prompts",
+                "value": {
+                    "model": "Qwen3-Embedding-0.6B",
+                    "input": [
+                        "What is the capital of China?",
+                        "Explain gravity"
+                    ],
+                    "prompt": [
+                        "Represent this as a search query",
+                        "Represent this as a search query"
+                    ]
+                },
+            },
+        },
+    )
+):
     """Create embeddings - OpenAI compatible endpoint"""
     try:
         logger.info(f"Embedding request for model: {request.model}, {len(request.input)} texts")

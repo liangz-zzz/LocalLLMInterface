@@ -55,7 +55,7 @@ POST /v1/chat/completions
 POST /v1/embeddings
 ```
 
-**Request Body:**
+**Request Body (basic):**
 ```json
 {
   "model": "Qwen3-Embedding-0.6B",
@@ -80,6 +80,63 @@ POST /v1/embeddings
     "total_tokens": 4
   }
 }
+```
+
+#### Prompt support
+
+Embeddings support instruction prompts to improve retrieval alignment:
+
+- `prompt_name`: Use a named template provided by the model (e.g., `"query"`).
+- `prompt`: Provide a custom instruction string, or a list of strings per input.
+
+Examples:
+
+1) Named prompt (recommended for search queries)
+
+```bash
+curl -X POST "http://localhost:15530/v1/embeddings" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "Qwen3-Embedding-0.6B",
+    "input": [
+      "What is the capital of China?",
+      "Explain gravity"
+    ],
+    "prompt_name": "query"
+  }'
+```
+
+2) Custom prompt (override template)
+
+```bash
+curl -X POST "http://localhost:15530/v1/embeddings" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "Qwen3-Embedding-0.6B",
+    "input": [
+      "What is the capital of China?",
+      "Explain gravity"
+    ],
+    "prompt": "Given a web search query, retrieve relevant passages that answer the query"
+  }'
+```
+
+3) Per-input custom prompts
+
+```bash
+curl -X POST "http://localhost:15530/v1/embeddings" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "Qwen3-Embedding-0.6B",
+    "input": [
+      "What is the capital of China?",
+      "Explain gravity"
+    ],
+    "prompt": [
+      "Represent this as a search query",
+      "Represent this as a search query"
+    ]
+  }'
 ```
 
 ### 3. Reranking

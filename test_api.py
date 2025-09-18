@@ -6,6 +6,7 @@ import httpx
 import json
 import base64
 from typing import Dict, Any
+import numpy as np
 from PIL import Image
 from io import BytesIO
 
@@ -108,6 +109,81 @@ async def test_embeddings(models: list):
             print(f"Usage: {data['usage']}")
         else:
             print(f"Error: {response.text}")
+
+
+async def test_embeddings_with_prompt(models: list):
+    """Test embeddings with prompt support (Qwen3)"""
+    print("\n🔢 Testing embeddings with prompt (Qwen3)...")
+
+    # Prefer Qwen3 embedding model if available
+    qwen_models = [m for m in models if m["type"] == "embedding" and "Qwen3-Embedding" in m["id"]]
+    if qwen_models:
+        model_name = qwen_models[0]["id"]
+    else:
+        # Fallback to first embedding model
+        embedding_models = [m for m in models if m["type"] == "embedding"]
+        if not embedding_models:
+            print("No embedding models found, skipping prompt test")
+            return
+        model_name = embedding_models[0]["id"]
+
+    print(f"Using model: {model_name}")
+
+    # Test data aligned with Qwen3 examples
+    queries = [
+        "What is the capital of China?",
+        "Explain gravity",
+    ]
+    documents = [
+        "The capital of China is Beijing.",
+        "Gravity is a force that attracts two bodies towards each other. It gives weight to physical objects and is responsible for the movement of planets around the sun.",
+    ]
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        # Encode queries with a custom prompt (override preset prompt_name)
+        q_payload = {
+            "model": model_name,
+            "input": queries,
+            "prompt": "Given a web search query, retrieve relevant passages that answer the query",
+        }
+        q_resp = await client.post(f"{BASE_URL}/v1/embeddings", json=q_payload)
+        print(f"Query embeddings status: {q_resp.status_code}")
+        if q_resp.status_code != 200:
+            print(f"Error (queries): {q_resp.text}")
+            return
+
+        d_payload = {
+            "model": model_name,
+            "input": documents
+        }
+        d_resp = await client.post(f"{BASE_URL}/v1/embeddings", json=d_payload)
+        print(f"Document embeddings status: {d_resp.status_code}")
+        if d_resp.status_code != 200:
+            print(f"Error (documents): {d_resp.text}")
+            return
+
+        q_data = q_resp.json()
+        d_data = d_resp.json()
+
+        # Extract vectors
+        q_vecs = np.array([item["embedding"] for item in q_data["data"]], dtype=np.float32)
+        d_vecs = np.array([item["embedding"] for item in d_data["data"]], dtype=np.float32)
+
+        print(f"Queries: {len(q_vecs)}, Documents: {len(d_vecs)}")
+        print(f"Embedding dimension: {len(q_data['data'][0]['embedding'])}")
+
+        # Compute cosine similarity (embeddings are normalized server-side)
+        sim = q_vecs @ d_vecs.T
+        # Pretty print similarity matrix
+        with np.printoptions(precision=4, suppress=True):
+            print("Similarity matrix:\n", sim)
+
+        # Basic sanity checks: diagonal should be highest for corresponding pairs
+        diag_ok = (sim[0, 0] > sim[0, 1]) and (sim[1, 1] > sim[1, 0])
+        if diag_ok:
+            print("✅ Query-document alignment looks correct (diagonal dominates).")
+        else:
+            print("⚠️  Alignment check did not pass; please review model outputs.")
 
 
 async def test_rerank(models: list):
@@ -330,6 +406,7 @@ async def main():
         
         # Test each endpoint type
         await test_embeddings(models)
+        await test_embeddings_with_prompt(models)
         await test_rerank(models)
         # await test_chat_completion(models)
         # await test_chat_completion(models)
