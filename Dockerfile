@@ -33,7 +33,7 @@ EXPOSE 15530
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:15530/v1/health || exit 1
+    CMD sh -c 'if [ -n "${LLM_API_KEY:-}" ]; then curl -fsS -H "Authorization: Bearer ${LLM_API_KEY}" http://localhost:15530/v1/health; else curl -fsS http://localhost:15530/v1/health; fi' || exit 1
 
 # Start command
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "15530", "--workers", "1"]

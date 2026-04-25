@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # Server configuration
     host: str = Field(default="0.0.0.0", description="Server host")
     port: int = Field(default=15530, description="Server port")
+    bind_ip: Optional[str] = Field(
+        default=None,
+        description="Optional host-side bind IP used by docker-compose port publishing",
+    )
     
     # Model paths
     models_dir: str = Field(

@@ -53,7 +53,7 @@ docker-compose up -d
 docker run -d \
   --name local-llm-api \
   --gpus all \
-  -p 15530:15530 \
+  -p 127.0.0.1:15530:15530 \
   -v /mnt/workspace/Source/LLM:/models:ro \
   -v .:/app \
   -e LLM_GPU_MEMORY_UTILIZATION=0.8 \
@@ -72,6 +72,22 @@ curl http://localhost:15530/v1/health
 curl http://localhost:15530/v1/models
 ```
 
+## 安全部署到 Tailnet
+
+如果云端 ECS 需要访问本机 `LocalLLMInterface`，不要把端口暴露到公网或局域网。
+
+```bash
+export LLM_BIND_IP=<your-local-tailscale-ip>
+export LLM_API_KEY=<strong-random-secret>
+docker-compose up -d
+```
+
+- `LLM_BIND_IP` 控制 Docker 主机侧端口绑定地址。默认是 `127.0.0.1`；Tailnet 场景改成你的本机 Tailscale IP。
+- `LLM_API_KEY` 启用 `Authorization: Bearer <token>` 鉴权，所有 `/v1/*` 路由都会校验。
+- 云端 `sinan` 后端应设置：
+  - `LOCAL_ENGINE_BASE_URL=http://<your-local-tailscale-ip>:15530`
+  - `LOCAL_ENGINE_API_KEY=<same-secret>`
+
 ## API使用示例
 
 ### Chat Completion
@@ -82,7 +98,7 @@ import openai
 # 配置客户端（只需修改base_url）
 client = openai.OpenAI(
     base_url="http://localhost:15530/v1",
-    api_key="not-needed"  # 本地服务无需密钥
+    api_key="not-needed"  # 若配置了 LLM_API_KEY，这里填同一个 token
 )
 
 # 使用Chat模型
@@ -200,6 +216,7 @@ LLM_MODELS_DIR=/models
 # 服务器配置
 LLM_HOST=0.0.0.0
 LLM_PORT=15530
+LLM_BIND_IP=127.0.0.1
 
 # GPU配置
 LLM_GPU_MEMORY_UTILIZATION=0.8
@@ -221,6 +238,9 @@ LLM_MODEL_CACHE_SIZE=1
 
 # 日志级别
 LLM_LOG_LEVEL=INFO
+
+# 可选 API 鉴权（保护所有 /v1/* 路由）
+LLM_API_KEY=
 ```
 
 ## 项目架构

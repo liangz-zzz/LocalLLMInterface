@@ -225,6 +225,12 @@ LocalLLMInterface/
 ## 关键配置参数
 
 ```bash
+# 主机侧安全绑定
+LLM_BIND_IP=127.0.0.1                  # Docker 端口发布地址；Tailnet 场景改为本机 Tailscale IP
+
+# API 鉴权
+LLM_API_KEY=                           # 设置后所有 /v1/* 路由需要 Bearer Token
+
 # 智能部署核心配置
 LLM_ENABLE_GPU_MEMORY_OFFLOAD=true     # 启用混合部署
 LLM_GPU_MEMORY_OFFLOAD_THRESHOLD_GB=4.0 # 大模型阈值

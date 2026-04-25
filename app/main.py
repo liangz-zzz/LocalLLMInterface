@@ -2,9 +2,11 @@
 
 import asyncio
 import multiprocessing
+import secrets
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from loguru import logger
 import sys
 
@@ -100,6 +102,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _extract_bearer_token(request: Request) -> str | None:
+    auth_header = (request.headers.get("Authorization") or "").strip()
+    if not auth_header:
+        return None
+    scheme, _, token = auth_header.partition(" ")
+    if scheme.lower() != "bearer":
+        return None
+    token = token.strip()
+    return token or None
+
+
+@app.middleware("http")
+async def require_api_key_for_v1(request: Request, call_next):
+    expected_api_key = settings.api_key
+    if not expected_api_key or not request.url.path.startswith("/v1/"):
+        return await call_next(request)
+
+    provided_token = _extract_bearer_token(request)
+    if provided_token is None or not secrets.compare_digest(provided_token, expected_api_key):
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+
+    return await call_next(request)
 
 # Include routers
 app.include_router(models.router)

@@ -7,6 +7,15 @@ set -e
 echo "🚀 Starting Local LLM Interface"
 echo "================================"
 
+bind_ip="${LLM_BIND_IP:-127.0.0.1}"
+base_url="http://${bind_ip}:15530"
+health_url="${base_url}/v1/health"
+
+curl_args=(-s)
+if [ -n "${LLM_API_KEY:-}" ]; then
+    curl_args+=(-H "Authorization: Bearer ${LLM_API_KEY}")
+fi
+
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
     echo "❌ Docker is not running. Please start Docker first."
@@ -39,21 +48,25 @@ sleep 10
 
 # Test service
 echo "🧪 Testing service..."
-if curl -s http://localhost:15530/v1/health > /dev/null; then
+if curl "${curl_args[@]}" "${health_url}" > /dev/null; then
     echo "✅ Service is running successfully!"
     echo ""
     echo "📊 Service Information:"
-    curl -s http://localhost:15530/v1/health | python3 -m json.tool
+    curl "${curl_args[@]}" "${health_url}" | python3 -m json.tool
     echo ""
     echo "🌐 Access the service at:"
-    echo "  API Base URL: http://localhost:15530/v1"
-    echo "  Documentation: http://localhost:15530/docs"
-    echo "  Health Check: http://localhost:15530/v1/health"
-    echo "  Model List: http://localhost:15530/v1/models"
+    echo "  API Base URL: ${base_url}/v1"
+    echo "  Documentation: ${base_url}/docs"
+    echo "  Health Check: ${health_url}"
+    echo "  Model List: ${base_url}/v1/models"
     echo ""
     echo "📖 Usage Examples:"
     echo "  Python: python test_api.py"
-    echo "  cURL: curl http://localhost:15530/v1/models"
+    if [ -n "${LLM_API_KEY:-}" ]; then
+        echo "  cURL: curl -H 'Authorization: Bearer <LLM_API_KEY>' ${base_url}/v1/models"
+    else
+        echo "  cURL: curl ${base_url}/v1/models"
+    fi
 else
     echo "❌ Service failed to start. Check logs:"
     echo "docker-compose logs local-llm-interface"
